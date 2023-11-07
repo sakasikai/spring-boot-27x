@@ -1,6 +1,10 @@
 pluginManagement {
 	repositories {
-		mavenCentral()
+		mavenLocal()
+		maven { url 'https://maven.aliyun.com/repository/public' }
+		maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+		maven { url 'https://maven.aliyun.com/repository/spring' }
+
 		gradlePluginPortal()
 		if (version.endsWith('-SNAPSHOT')) {
 			maven { url "https://repo.spring.io/snapshot" }
@@ -82,3 +86,5 @@ file("${rootDir}/spring-boot-project/spring-boot-starters").eachDirMatch(~/sprin
 file("${rootDir}/spring-boot-tests/spring-boot-smoke-tests").eachDirMatch(~/spring-boot-smoke-test.*/) {
 	include "spring-boot-tests:spring-boot-smoke-tests:${it.name}"
 }
+include 'tonqlet-room'
+
