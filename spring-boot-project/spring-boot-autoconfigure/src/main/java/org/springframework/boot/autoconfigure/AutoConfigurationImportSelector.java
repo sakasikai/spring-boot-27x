@@ -123,12 +123,18 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		}
 		AnnotationAttributes attributes = getAttributes(annotationMetadata);
 		List<String> configurations = getCandidateConfigurations(annotationMetadata, attributes);
+
+		// 去重
 		configurations = removeDuplicates(configurations);
+		// 排除
 		Set<String> exclusions = getExclusions(annotationMetadata, attributes);
 		checkExcludedClasses(configurations, exclusions);
 		configurations.removeAll(exclusions);
+		// 过滤
 		configurations = getConfigurationClassFilter().filter(configurations);
+
 		fireAutoConfigurationImportEvents(configurations, exclusions);
+
 		return new AutoConfigurationEntry(configurations, exclusions);
 	}
 
