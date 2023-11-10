@@ -73,6 +73,8 @@ public final class ImportCandidates implements Iterable<String> {
 		ClassLoader classLoaderToUse = decideClassloader(classLoader);
 		String location = String.format(LOCATION, annotation.getName());
 		Enumeration<URL> urls = findUrlsInClasspath(classLoaderToUse, location);
+
+		// 承接集合
 		List<String> importCandidates = new ArrayList<>();
 		while (urls.hasMoreElements()) {
 			URL url = urls.nextElement();
@@ -102,6 +104,7 @@ public final class ImportCandidates implements Iterable<String> {
 				new InputStreamReader(new UrlResource(url).getInputStream(), StandardCharsets.UTF_8))) {
 			List<String> candidates = new ArrayList<>();
 			String line;
+			// 读取所有line
 			while ((line = reader.readLine()) != null) {
 				line = stripComment(line);
 				line = line.trim();

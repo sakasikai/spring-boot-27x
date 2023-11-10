@@ -62,12 +62,15 @@ class OnClassCondition extends FilteringSpringBootCondition {
 	private ConditionOutcome[] resolveOutcomesThreaded(String[] autoConfigurationClasses,
 			AutoConfigurationMetadata autoConfigurationMetadata) {
 		int split = autoConfigurationClasses.length / 2;
+		// 新开了一个线程
 		OutcomesResolver firstHalfResolver = createOutcomesResolver(autoConfigurationClasses, 0, split,
 				autoConfigurationMetadata);
 		OutcomesResolver secondHalfResolver = new StandardOutcomesResolver(autoConfigurationClasses, split,
 				autoConfigurationClasses.length, autoConfigurationMetadata, getBeanClassLoader());
+
 		ConditionOutcome[] secondHalf = secondHalfResolver.resolveOutcomes();
 		ConditionOutcome[] firstHalf = firstHalfResolver.resolveOutcomes();
+
 		ConditionOutcome[] outcomes = new ConditionOutcome[autoConfigurationClasses.length];
 		System.arraycopy(firstHalf, 0, outcomes, 0, firstHalf.length);
 		System.arraycopy(secondHalf, 0, outcomes, split, secondHalf.length);
@@ -198,6 +201,9 @@ class OnClassCondition extends FilteringSpringBootCondition {
 			for (int i = start; i < end; i++) {
 				String autoConfigurationClass = autoConfigurationClasses[i];
 				if (autoConfigurationClass != null) {
+					// 实现类 AutoConfigurationMetadataLoader
+					// 读取 PATH = "META-INF/spring-autoconfigure-metadata.properties" 中，
+					// key为${autoConfigurationClass}.ConditionalOnClass的配置
 					String candidates = autoConfigurationMetadata.get(autoConfigurationClass, "ConditionalOnClass");
 					if (candidates != null) {
 						outcomes[i - start] = getOutcome(candidates);
@@ -209,9 +215,11 @@ class OnClassCondition extends FilteringSpringBootCondition {
 
 		private ConditionOutcome getOutcome(String candidates) {
 			try {
-				if (!candidates.contains(",")) {
+				if (!candidates.contains(",")) { // 只有一个candidate
 					return getOutcome(candidates, this.beanClassLoader);
 				}
+
+				// 为数组，那么遍历每一个candidate
 				for (String candidate : StringUtils.commaDelimitedListToStringArray(candidates)) {
 					ConditionOutcome outcome = getOutcome(candidate, this.beanClassLoader);
 					if (outcome != null) {
