@@ -17,6 +17,7 @@
 package org.springframework.boot;
 
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.springframework.context.ConfigurableApplicationContext;
@@ -45,7 +46,8 @@ class DefaultApplicationContextFactory implements ApplicationContextFactory {
 	@Override
 	public ConfigurableApplicationContext create(WebApplicationType webApplicationType) {
 		try {
-			return getFromSpringFactories(webApplicationType, ApplicationContextFactory::create,
+			return getFromSpringFactories(webApplicationType,
+					ApplicationContextFactory::create,
 					AnnotationConfigApplicationContext::new);
 		}
 		catch (Exception ex) {
@@ -54,15 +56,38 @@ class DefaultApplicationContextFactory implements ApplicationContextFactory {
 		}
 	}
 
+	/**
+	 * @description: TODO
+	 * @author: maiqi
+	 * @param webApplicationType
+	 * @param action
+	 * @param defaultResult 默认值 Supplier ==》AnnotationConfigApplicationContext::new
+	 * @return T
+	 * @update: 2023/11/11 15:19
+	 */
 	private <T> T getFromSpringFactories(WebApplicationType webApplicationType,
-			BiFunction<ApplicationContextFactory, WebApplicationType, T> action, Supplier<T> defaultResult) {
+			BiFunction<ApplicationContextFactory, WebApplicationType, T> action,
+			Supplier<T> defaultResult) {
+
+		// 从 META-INF/spring.factories 中检索 ApplicationContextFactory.class 的所有实现类
 		for (ApplicationContextFactory candidate : SpringFactoriesLoader.loadFactories(ApplicationContextFactory.class,
 				getClass().getClassLoader())) {
+
+			// R apply(T t, U u)
+			// ==> BiFunction<ApplicationContextFactory, WebApplicationType, T> action
+
+			// =====> ApplicationContextFactory::create
+			// 因为是非static函数‼️，所以是 (T t, U u) -> return r = t.create(u);
+
+			// 绑定情况如下：
+			// t 绑定到 ApplicationContextFactory::create 的实例上，
+			// u 绑定到 ApplicationContextFactory::create 的参数上
 			T result = action.apply(candidate, webApplicationType);
 			if (result != null) {
 				return result;
 			}
 		}
+		// IF result == null，动用默认值
 		return (defaultResult != null) ? defaultResult.get() : null;
 	}
 

@@ -62,7 +62,11 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 	public EventPublishingRunListener(SpringApplication application, String[] args) {
 		this.application = application;
 		this.args = args;
+
+		// 初始化 多播器
 		this.initialMulticaster = new SimpleApplicationEventMulticaster();
+
+		// initialMulticaster 关联 application.listeners
 		for (ApplicationListener<?> listener : application.getListeners()) {
 			this.initialMulticaster.addApplicationListener(listener);
 		}
@@ -92,8 +96,12 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 			.multicastEvent(new ApplicationContextInitializedEvent(this.application, this.args, context));
 	}
 
+	// 广播方法的分水岭，
+	// 此前是 initialMulticaster.multicastEvent(e)
+	// context 加载好后，context.publishEvent(e)
 	@Override
 	public void contextLoaded(ConfigurableApplicationContext context) {
+		// 把 application 中的 listeners 关联到 context 中
 		for (ApplicationListener<?> listener : this.application.getListeners()) {
 			if (listener instanceof ApplicationContextAware) {
 				((ApplicationContextAware) listener).setApplicationContext(context);

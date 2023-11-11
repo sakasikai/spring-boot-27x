@@ -260,12 +260,20 @@ public class SpringApplication {
 	public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySources) {
 		this.resourceLoader = resourceLoader;
 		Assert.notNull(primarySources, "PrimarySources must not be null");
+		// Set Class
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
-		this.bootstrapRegistryInitializers = new ArrayList<>(
-				getSpringFactoriesInstances(BootstrapRegistryInitializer.class));
+
+		// List BootstrapRegistry_Initializer
+		this.bootstrapRegistryInitializers = new ArrayList<>(getSpringFactoriesInstances(BootstrapRegistryInitializer.class));
+
+		// List ApplicationContext_Initializer
+		// refresh之前，ApplicationContext的介入点
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
+
+		// List Application_Listener
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
+
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
@@ -295,18 +303,27 @@ public class SpringApplication {
 		DefaultBootstrapContext bootstrapContext = createBootstrapContext();
 		ConfigurableApplicationContext context = null;
 		configureHeadlessProperty();
+
+		// holds List<SpringApplicationRunListener>
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting(bootstrapContext, this.mainApplicationClass);
+
 		try {
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, bootstrapContext, applicationArguments);
 			configureIgnoreBeanInfo(environment);
 			Banner printedBanner = printBanner(environment);
+
+			// 策略模式 => 参数为 this.webApplicationType
 			context = createApplicationContext();
 			context.setApplicationStartup(this.applicationStartup);
+
+			// listeners.contextLoaded(context)
 			prepareContext(bootstrapContext, context, environment, listeners, applicationArguments, printedBanner);
+
 			refreshContext(context);
 			afterRefresh(context, applicationArguments);
+
 			Duration timeTakenToStartup = Duration.ofNanos(System.nanoTime() - startTime);
 			if (this.logStartupInfo) {
 				new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), timeTakenToStartup);
@@ -330,7 +347,9 @@ public class SpringApplication {
 	}
 
 	private DefaultBootstrapContext createBootstrapContext() {
+		// ApplicationEventMulticaster events = new SimpleApplicationEventMulticaster();
 		DefaultBootstrapContext bootstrapContext = new DefaultBootstrapContext();
+
 		this.bootstrapRegistryInitializers.forEach((initializer) -> initializer.initialize(bootstrapContext));
 		return bootstrapContext;
 	}
@@ -372,7 +391,10 @@ public class SpringApplication {
 		context.setEnvironment(environment);
 		postProcessApplicationContext(context);
 		applyInitializers(context);
+
 		listeners.contextPrepared(context);
+
+		// bootstrapContext closed ??
 		bootstrapContext.close(context);
 		if (this.logStartupInfo) {
 			logStartupInfo(context.getParent() == null);
@@ -387,18 +409,22 @@ public class SpringApplication {
 		if (beanFactory instanceof AbstractAutowireCapableBeanFactory) {
 			((AbstractAutowireCapableBeanFactory) beanFactory).setAllowCircularReferences(this.allowCircularReferences);
 			if (beanFactory instanceof DefaultListableBeanFactory) {
-				((DefaultListableBeanFactory) beanFactory)
-					.setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
+				((DefaultListableBeanFactory) beanFactory).setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
 			}
 		}
 		if (this.lazyInitialization) {
 			context.addBeanFactoryPostProcessor(new LazyInitializationBeanFactoryPostProcessor());
 		}
 		context.addBeanFactoryPostProcessor(new PropertySourceOrderingBeanFactoryPostProcessor(context));
+
 		// Load the sources
 		Set<Object> sources = getAllSources();
 		Assert.notEmpty(sources, "Sources must not be empty");
 		load(context, sources.toArray(new Object[0]));
+
+		// context 加载完成，
+		// 对所有listeners 调用listener.contextLoaded()
+		// 把 application 中的 listeners 关联到 context 中
 		listeners.contextLoaded(context);
 	}
 
@@ -406,6 +432,7 @@ public class SpringApplication {
 		if (this.registerShutdownHook) {
 			shutdownHook.registerApplicationContext(context);
 		}
+		// 触发 context.refresh()
 		refresh(context);
 	}
 
@@ -427,10 +454,15 @@ public class SpringApplication {
 
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes, Object... args) {
 		ClassLoader classLoader = getClassLoader();
+
+		// load impl-classNames from META-INF/spring.factories
 		// Use names and ensure unique to protect against duplicates
 		Set<String> names = new LinkedHashSet<>(SpringFactoriesLoader.loadFactoryNames(type, classLoader));
+
+		// 反射：names ==> instances
 		List<T> instances = createSpringFactoriesInstances(type, parameterTypes, classLoader, args, names);
 		AnnotationAwareOrderComparator.sort(instances);
+
 		return instances;
 	}
 
@@ -440,6 +472,7 @@ public class SpringApplication {
 		List<T> instances = new ArrayList<>(names.size());
 		for (String name : names) {
 			try {
+				// 反射：names ==> instances
 				Class<?> instanceClass = ClassUtils.forName(name, classLoader);
 				Assert.isAssignable(type, instanceClass);
 				Constructor<?> constructor = instanceClass.getDeclaredConstructor(parameterTypes);
